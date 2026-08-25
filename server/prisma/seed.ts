@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { env } from "../src/config/env";
 import { PrismaClient } from "../src/generated/prisma/client";
 import {
   Role,
@@ -9,7 +10,7 @@ import {
 import bcrypt from "bcrypt";
 import { PrismaPg }  from "@prisma/adapter-pg"
 
-const connectionString = process.env.DATABASE_URL;
+const connectionString = env.DATABASE_URL;
 
 if(!connectionString){
     throw new Error("DATABASE_URL is not defined");
