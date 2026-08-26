@@ -1,6 +1,6 @@
 import type { Response } from "express";
 import type { AuthRequest } from "../../middlewares/auth.js";
-import { createReservationSchema } from "./reservation.validation.js";
+import { createReservationSchema, payReservationSchema } from "./reservation.validation.js";
 import {
   createReservation,
   getReservationById,
@@ -44,13 +44,17 @@ export async function getReservationController(
 
   return res.json(reservation);
 }
+
 export async function payReservationController(
   req: AuthRequest,
   res: Response,
 ) {
+  const input = payReservationSchema.parse(req.body);
+
   const reservation = await payReservation(
     req.params.id as string,
     req.user!.id,
+    input.approved,
   );
 
   return res.json(reservation);
