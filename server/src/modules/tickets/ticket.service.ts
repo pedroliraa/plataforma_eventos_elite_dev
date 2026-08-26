@@ -50,3 +50,29 @@ export async function getTicketByShareToken(
 
   return ticket;
 }
+
+export async function validateTicket(ticketId: string) {
+  const ticket = await prisma.ticket.findUnique({
+    where: {
+      id: ticketId,
+    },
+  });
+
+  if (!ticket) {
+    throw new AppError(404, "Ticket not found");
+  }
+
+  if (ticket.status !== "VALID") {
+    throw new AppError(400, "Ticket is not valid");
+  }
+
+  return prisma.ticket.update({
+    where: {
+      id: ticket.id,
+    },
+    data: {
+      status: "USED",
+      usedAt: new Date(),
+    },
+  });
+}
