@@ -1,6 +1,7 @@
 import { prisma } from "../../infra/prisma/client.js";
 import { AppError } from "../../errors/app-error.js";
 import type { CreateReservationInput } from "./reservation.types.js";
+import { generateTicketToken } from "../../utils/ticket-token.js";
 import crypto from "node:crypto";
 
 export async function createReservation(
@@ -128,15 +129,18 @@ export async function payReservation(
             },
         });
 
-        await tx.ticket.createMany({
-            data: Array.from(
-                { length: reservation.quantity },
-                () => ({
+        for (let i = 0; i < reservation.quantity; i++) {
+            const ticketId = crypto.randomUUID();
+            const qrCode = generateTicketToken(ticketId);
+
+            await tx.ticket.create({
+                data: {
+                    id: ticketId,
                     reservationId: reservation.id,
-                    qrCode: crypto.randomUUID(),
-                }),
-            ),
-        });
+                    qrCode,
+                },
+            });
+        }
 
         return paidReservation;
     });
