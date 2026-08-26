@@ -2,6 +2,8 @@ import express from "express";
 import authRoutes from "./modules/auth/auth.routes.js";
 import { errorHandler } from "./middlewares/error-handle.js";
 import eventRoutes from "./modules/events/event.routes.js";
+import reservationRoutes from "./modules/reservations/reservation.routes.js";
+import ticketRoutes from "./modules/tickets/ticket.routes.js";
 
 const app = express();
 
@@ -15,6 +17,8 @@ app.get("/", (_req, res) => {
 
 app.use("/auth", authRoutes);
 app.use("/events", eventRoutes);
+app.use("/reservations", reservationRoutes);
+app.use("/tickets", ticketRoutes);
 
 app.use(errorHandler);
 
