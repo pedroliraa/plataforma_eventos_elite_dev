@@ -3,7 +3,8 @@ import type { AuthRequest } from "../../middlewares/auth.js";
 import {
   getTicketById,
   getTicketByShareToken,
-} from "./ticket.service.js";
+  validateTicket,
+} from "./ticket.service.js"
 
 export async function getTicketController(
   req: AuthRequest,
@@ -26,4 +27,16 @@ export async function getTicketByShareTokenController(
   );
 
   return res.json(ticket);
+}
+
+export async function validateTicketController(
+  req: AuthRequest,
+  res: Response,
+) {
+  const ticket = await validateTicket(req.params.id as string);
+
+  return res.json({
+    message: "Ticket validated successfully",
+    ticket,
+  });
 }
