@@ -1,4 +1,4 @@
-import type { Response } from "express";
+import type { Request, Response } from "express";
 import type { AuthRequest } from "../../middlewares/auth.js";
 import {
     createEventSchema,
@@ -12,6 +12,7 @@ import {
     updateEvent,
 } from "./event.service.js";
 import { AppError } from "../../errors/app-error.js";
+import { searchMovies } from "../../infra/tmdb/tmdb.service.js";
 
 
 function getParamId(value: string | string[] | undefined): string {
@@ -85,4 +86,21 @@ const id = getParamId(req.params.id);
     );
 
     return res.status(204).send();
+}
+
+export async function searchMoviesController(
+  req: Request,
+  res: Response,
+) {
+  const query = req.query.query;
+
+  if (typeof query !== "string" || !query.trim()) {
+    return res.status(400).json({
+      message: "Query is required",
+    });
+  }
+
+  const movies = await searchMovies(query);
+
+  return res.json(movies);
 }

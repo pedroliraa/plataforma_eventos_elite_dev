@@ -3,7 +3,8 @@ import { z } from "zod";
 
 const envSchema = z.object({
     DATABASE_URL: z.string().min(1),
-    JWT_SECRET: z.string().min(32)
+    JWT_SECRET: z.string().min(32),
+    TMDB_API_TOKEN: z.string()
 });
 
 const parsedEnv = envSchema.safeParse(process.env);
