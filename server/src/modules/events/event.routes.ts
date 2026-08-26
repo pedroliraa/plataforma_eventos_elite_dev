@@ -9,11 +9,15 @@ import {
   getEventController,
   listEventsController,
   updateEventController,
+  searchMoviesController
 } from "./event.controller.js";
 
 const router = Router();
 
 router.get("/", listEventsController);
+
+router.get("/catalog/search", searchMoviesController);
+
 router.get("/:id", getEventController);
 
 router.post(
