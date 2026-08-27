@@ -1,12 +1,15 @@
 import express from "express";
+import cors from "cors";
 import authRoutes from "./modules/auth/auth.routes.js";
 import { errorHandler } from "./middlewares/error-handle.js";
 import eventRoutes from "./modules/events/event.routes.js";
 import reservationRoutes from "./modules/reservations/reservation.routes.js";
 import ticketRoutes from "./modules/tickets/ticket.routes.js";
 
+
 const app = express();
 
+app.use(cors());
 app.use(express.json());
 
 app.get("/", (_req, res) => {
