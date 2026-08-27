@@ -28,6 +28,7 @@ export default function EventoPage() {
     const [reservationError, setReservationError] = useState("");
     const [paying, setPaying] = useState(false);
     const [paid, setPaid] = useState(false);
+    const [paymentRejected, setPaymentRejected] = useState(false);
     const [paymentError, setPaymentError] = useState("");
 
     useEffect(() => {
@@ -141,6 +142,7 @@ export default function EventoPage() {
                                 try {
                                     setPaying(true);
                                     setPaymentError("");
+                                    setPaymentRejected(false);
 
                                     await apiFetch(
                                         `/reservations/${reservationId}/pay`,
@@ -164,7 +166,45 @@ export default function EventoPage() {
                                 }
                             }}
                         >
-                            {paying ? "Processando..." : "Pagar reserva"}
+                            {paying
+                                ? "Processando..."
+                                : "Simular pagamento aprovado"}
+                        </button>
+
+                        <button
+                            type="button"
+                            disabled={paying}
+                            onClick={async () => {
+                                try {
+                                    setPaying(true);
+                                    setPaymentError("");
+                                    setPaymentRejected(false);
+
+                                    await apiFetch(
+                                        `/reservations/${reservationId}/pay`,
+                                        {
+                                            method: "POST",
+                                            body: JSON.stringify({
+                                                approved: false,
+                                            }),
+                                        },
+                                    );
+
+                                    setPaymentRejected(true);
+                                } catch (error) {
+                                    setPaymentError(
+                                        error instanceof Error
+                                            ? error.message
+                                            : "Não foi possível realizar o pagamento.",
+                                    );
+                                } finally {
+                                    setPaying(false);
+                                }
+                            }}
+                        >
+                            {paying
+                                ? "Processando..."
+                                : "Simular pagamento recusado"}
                         </button>
 
                         {paymentError && (
@@ -172,9 +212,29 @@ export default function EventoPage() {
                         )}
 
                         {paid && (
-                            <p>
-                                Pagamento realizado com sucesso! Seus ingressos foram gerados.
-                            </p>
+                            <div>
+                                <p>
+                                    Pagamento realizado com sucesso!
+                                    Seus ingressos foram gerados.
+                                </p>
+
+                                <Link href="/meus-ingressos">
+                                    Ver meus ingressos
+                                </Link>
+                            </div>
+                        )}
+
+                        {paymentRejected && (
+                            <div>
+                                <p>
+                                    Pagamento recusado.
+                                </p>
+
+                                <p>
+                                    Sua reserva não foi aprovada.
+                                    Tente novamente.
+                                </p>
+                            </div>
                         )}
                     </div>
                 )}
