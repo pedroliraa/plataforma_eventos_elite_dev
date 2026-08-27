@@ -24,7 +24,7 @@ export async function register(input: RegisterInput) {
             name: input.name,
             email: input.email,
             passwordHash,
-            role: input.role,
+            role: "CUSTOMER",
         },
     });
 
