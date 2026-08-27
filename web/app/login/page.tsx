@@ -2,103 +2,175 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { apiFetch } from "@/lib/api";
 import {
-  setToken,
-  setUser,
-  type LoginResponse,
+    setToken,
+    setUser,
+    type LoginResponse,
 } from "@/lib/auth";
 
 export default function LoginPage() {
-  const router = useRouter();
+    const router = useRouter();
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [error, setError] = useState("");
+    const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+    async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+        event.preventDefault();
 
-    setError("");
-    setLoading(true);
+        setError("");
+        setLoading(true);
 
-    try {
-      const data = await apiFetch<LoginResponse>("/auth/login", {
-        method: "POST",
-        body: JSON.stringify({
-          email,
-          password,
-        }),
-      });
+        try {
+            const data = await apiFetch<LoginResponse>("/auth/login", {
+                method: "POST",
+                body: JSON.stringify({
+                    email,
+                    password,
+                }),
+            });
 
-      setToken(data.token);
-      setUser(data.user);
+            setToken(data.token);
+            setUser(data.user);
 
-      switch (data.user.role) {
-        case "CUSTOMER":
-          router.push("/events");
-          break;
+            window.dispatchEvent(new Event("auth-change"));
 
-        case "ORGANIZER":
-          router.push("/organizer");
-          break;
+            switch (data.user.role) {
+                case "CUSTOMER":
+                    router.push("/events");
+                    break;
 
-        case "GATE":
-          router.push("/gate");
-          break;
-      }
-    } catch (error) {
-      setError(
-        error instanceof Error
-          ? error.message
-          : "Não foi possível realizar o login.",
-      );
-    } finally {
-      setLoading(false);
+                case "ORGANIZER":
+                    router.push("/organizer");
+                    break;
+
+                case "GATE":
+                    router.push("/gate");
+                    break;
+            }
+        } catch (error) {
+            setError(
+                error instanceof Error
+                    ? error.message
+                    : "Não foi possível realizar o login.",
+            );
+        } finally {
+            setLoading(false);
+        }
     }
-  }
 
-  return (
-    <main>
-      <h1>Entrar</h1>
+    return (
+        <main className="auth-page">
+            <div className="auth-glow auth-glow--top" />
+            <div className="auth-glow auth-glow--bottom" />
 
-      <form onSubmit={handleSubmit}>
-        <div>
-          <label htmlFor="email">E-mail</label>
+            <div className="auth-container">
+                <div className="auth-brand">
+                    <span>ELITE</span>
+                    <strong>EVENTS</strong>
+                </div>
 
-          <input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            required
-          />
-        </div>
+                <section className="auth-card">
+                    <div className="auth-card__header">
+                        <span className="auth-eyebrow">
+                            BEM-VINDO DE VOLTA
+                        </span>
 
-        <div>
-          <label htmlFor="password">Senha</label>
+                        <h1>Entrar</h1>
 
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            required
-          />
-        </div>
+                        <p>
+                            Acesse sua conta para continuar.
+                        </p>
+                    </div>
 
-        {error && <p>{error}</p>}
+                    <form
+                        className="auth-form"
+                        onSubmit={handleSubmit}
+                    >
+                        <div className="auth-field">
+                            <label htmlFor="email">
+                                E-mail
+                            </label>
 
-        <button type="submit" disabled={loading}>
-          {loading ? "Entrando..." : "Entrar"}
-        </button>
-      </form>
+                            <input
+                                id="email"
+                                type="email"
+                                value={email}
+                                onChange={(event) =>
+                                    setEmail(event.target.value)
+                                }
+                                placeholder="seu@email.com"
+                                autoComplete="email"
+                                required
+                            />
+                        </div>
 
-      <p>
-        Ainda não tem uma conta?{" "}
-        <a href="/register">Criar conta</a>
-      </p>
-    </main>
-  );
+                        <div className="auth-field">
+                            <label htmlFor="password">
+                                Senha
+                            </label>
+
+                            <input
+                                id="password"
+                                type="password"
+                                value={password}
+                                onChange={(event) =>
+                                    setPassword(event.target.value)
+                                }
+                                placeholder="Sua senha"
+                                autoComplete="current-password"
+                                required
+                            />
+                        </div>
+
+                        {error && (
+                            <div className="auth-error">
+                                <span>!</span>
+                                <p>{error}</p>
+                            </div>
+                        )}
+
+                        <button
+                            type="submit"
+                            className="auth-submit"
+                            disabled={loading}
+                        >
+                            {loading ? (
+                                <>
+                                    <span className="auth-spinner" />
+                                    Entrando...
+                                </>
+                            ) : (
+                                <>
+                                    Entrar
+                                    <span>→</span>
+                                </>
+                            )}
+                        </button>
+                    </form>
+
+                    <div className="auth-divider">
+                        <span />
+                        <small>OU</small>
+                        <span />
+                    </div>
+
+                    <p className="auth-register">
+                        Ainda não tem uma conta?{" "}
+                        <Link href="/register">
+                            Criar conta
+                        </Link>
+                    </p>
+                </section>
+
+                <p className="auth-footer">
+                    Elite Events · Experiências que valem a pena.
+                </p>
+            </div>
+        </main>
+    );
 }
+

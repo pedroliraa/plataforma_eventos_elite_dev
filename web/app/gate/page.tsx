@@ -1,159 +1,329 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import {
+    removeToken,
+} from "@/lib/auth";
 
 type Event = {
-  id: string;
-  title: string;
-  date: string;
-  location: string;
+    id: string;
+    title: string;
+    date: string;
+    location: string;
 };
 
 type ValidatedTicket = {
-  id: string;
-  status: string;
-  usedAt: string | null;
+    id: string;
+    status: string;
+    usedAt: string | null;
 };
 
 function getTicketIdFromQr(qrCode: string): string {
-  const parts = qrCode.split(".");
+    const parts = qrCode.split(".");
 
-  if (parts.length !== 3) {
-    throw new Error("QR Code inválido");
-  }
-
-  try {
-    const payload = JSON.parse(
-      atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")),
-    );
-
-    if (!payload.ticketId) {
-      throw new Error("QR Code inválido");
-    }
-
-    return payload.ticketId;
-  } catch {
-    throw new Error("QR Code inválido");
-  }
-}
-
-export default function GatePage() {
-  const [events, setEvents] = useState<Event[]>([]);
-  const [eventId, setEventId] = useState("");
-  const [qrCode, setQrCode] = useState("");
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    async function loadEvents() {
-      try {
-        const data = await apiFetch<Event[]>("/events");
-        setEvents(data);
-      } catch (error) {
-        setError(
-          error instanceof Error
-            ? error.message
-            : "Não foi possível carregar os eventos.",
-        );
-      }
-    }
-
-    loadEvents();
-  }, []);
-
-  async function handleValidate() {
-    setMessage("");
-    setError("");
-
-    if (!eventId) {
-      setError("Selecione um evento.");
-      return;
-    }
-
-    if (!qrCode.trim()) {
-      setError("Informe o QR Code.");
-      return;
+    if (parts.length !== 3) {
+        throw new Error("QR Code inválido");
     }
 
     try {
-      setLoading(true);
+        const payload = JSON.parse(
+            atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")),
+        );
 
-      const ticketId = getTicketIdFromQr(qrCode.trim());
+        if (!payload.ticketId) {
+            throw new Error("QR Code inválido");
+        }
 
-      const result = await apiFetch<{
-        message: string;
-        ticket: ValidatedTicket;
-      }>(`/tickets/${ticketId}/validate`, {
-        method: "POST",
-        body: JSON.stringify({
-          qrCode: qrCode.trim(),
-          eventId,
-        }),
-      });
-
-      setMessage(result.message);
-      setQrCode("");
-    } catch (error) {
-      setError(
-        error instanceof Error
-          ? error.message
-          : "Não foi possível validar o ingresso.",
-      );
-    } finally {
-      setLoading(false);
+        return payload.ticketId;
+    } catch {
+        throw new Error("QR Code inválido");
     }
-  }
-
-  return (
-     <ProtectedRoute allowedRoles={["GATE"]}>
-    <main>
-      <h1>Validação de ingressos</h1>
-
-      <div>
-        <label htmlFor="event">Evento</label>
-
-        <select
-          id="event"
-          value={eventId}
-          onChange={(e) => setEventId(e.target.value)}
-        >
-          <option value="">Selecione um evento</option>
-
-          {events.map((event) => (
-            <option key={event.id} value={event.id}>
-              {event.title}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div>
-        <label htmlFor="qrCode">QR Code</label>
-
-        <textarea
-          id="qrCode"
-          value={qrCode}
-          onChange={(e) => setQrCode(e.target.value)}
-          placeholder="Cole o conteúdo do QR Code"
-          rows={5}
-        />
-      </div>
-
-      <button
-        type="button"
-        onClick={handleValidate}
-        disabled={loading}
-      >
-        {loading ? "Validando..." : "Validar ingresso"}
-      </button>
-
-      {message && <p>{message}</p>}
-
-      {error && <p>{error}</p>}
-    </main>
-    </ProtectedRoute>
-  );
 }
+
+function formatDate(date: string) {
+    return new Date(date).toLocaleDateString("pt-BR", {
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+    });
+}
+
+export default function GatePage() {
+    const [events, setEvents] = useState<Event[]>([]);
+    const [eventId, setEventId] = useState("");
+    const [qrCode, setQrCode] = useState("");
+
+    const [message, setMessage] = useState("");
+    const [error, setError] = useState("");
+
+    const [loading, setLoading] = useState(false);
+    const [loadingEvents, setLoadingEvents] = useState(true);
+
+    function handleLogout() {
+        removeToken();
+        window.location.href = "/login";
+    }
+
+    useEffect(() => {
+        async function loadEvents() {
+            try {
+                const data = await apiFetch<Event[]>("/events");
+                setEvents(data);
+            } catch (error) {
+                setError(
+                    error instanceof Error
+                        ? error.message
+                        : "Não foi possível carregar os eventos.",
+                );
+            } finally {
+                setLoadingEvents(false);
+            }
+        }
+
+        loadEvents();
+    }, []);
+
+    async function handleValidate() {
+        setMessage("");
+        setError("");
+
+        if (!eventId) {
+            setError("Selecione um evento.");
+            return;
+        }
+
+        if (!qrCode.trim()) {
+            setError("Informe o QR Code.");
+            return;
+        }
+
+        try {
+            setLoading(true);
+
+            const ticketId = getTicketIdFromQr(qrCode.trim());
+
+            const result = await apiFetch<{
+                message: string;
+                ticket: ValidatedTicket;
+            }>(`/tickets/${ticketId}/validate`, {
+                method: "POST",
+                body: JSON.stringify({
+                    qrCode: qrCode.trim(),
+                    eventId,
+                }),
+            });
+
+            setMessage(result.message);
+            setQrCode("");
+        } catch (error) {
+            setError(
+                error instanceof Error
+                    ? error.message
+                    : "Não foi possível validar o ingresso.",
+            );
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    const selectedEvent = events.find(
+        (event) => event.id === eventId,
+    );
+
+    return (
+        <ProtectedRoute allowedRoles={["GATE"]}>
+            <main className="gate-page">
+                <div className="gate-container">
+                    <section className="gate-heading">
+                        <div>
+                            <span className="gate-eyebrow">
+                                ELITE EVENTS · GATE
+                            </span>
+
+                            <h1>
+                                Validação de
+                                <span> ingressos.</span>
+                            </h1>
+
+                            <p>
+                                Confirme rapidamente a autenticidade
+                                de cada ingresso antes da entrada.
+                            </p>
+                        </div>
+
+                        <button
+                            type="button"
+                            className="gate-logout"
+                            onClick={handleLogout}
+                        >
+                            Sair
+                        </button>
+                    
+                    <div className="gate-status">
+                        <span className="gate-status__dot" />
+                        PORTARIA ATIVA
+                    </div>
+                </section>
+
+                <section className="gate-panel">
+                    <div className="gate-panel__header">
+                        <div>
+                            <span>CONTROLE DE ACESSO</span>
+                            <h2>Validar ingresso</h2>
+                        </div>
+
+                        <div className="gate-panel__number">
+                            01
+                        </div>
+                    </div>
+
+                    <div className="gate-form">
+                        <div className="gate-field">
+                            <label htmlFor="event">
+                                Evento
+                            </label>
+
+                            <select
+                                id="event"
+                                value={eventId}
+                                onChange={(e) => {
+                                    setEventId(e.target.value);
+                                    setMessage("");
+                                    setError("");
+                                }}
+                                disabled={loadingEvents}
+                            >
+                                <option value="">
+                                    {loadingEvents
+                                        ? "Carregando eventos..."
+                                        : "Selecione um evento"}
+                                </option>
+
+                                {events.map((event) => (
+                                    <option
+                                        key={event.id}
+                                        value={event.id}
+                                    >
+                                        {event.title}
+                                    </option>
+                                ))}
+                            </select>
+
+                            {selectedEvent && (
+                                <div className="gate-event-preview">
+                                    <strong>
+                                        {selectedEvent.title}
+                                    </strong>
+
+                                    <span>
+                                        {formatDate(
+                                            selectedEvent.date,
+                                        )}
+                                        {" · "}
+                                        {new Date(
+                                            selectedEvent.date,
+                                        ).toLocaleTimeString(
+                                            "pt-BR",
+                                            {
+                                                hour: "2-digit",
+                                                minute: "2-digit",
+                                            },
+                                        )}
+                                    </span>
+
+                                    <span>
+                                        {selectedEvent.location}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="gate-field">
+                            <label htmlFor="qrCode">
+                                Conteúdo do QR Code
+                            </label>
+
+                            <textarea
+                                id="qrCode"
+                                value={qrCode}
+                                onChange={(e) => {
+                                    setQrCode(e.target.value);
+                                    setMessage("");
+                                    setError("");
+                                }}
+                                placeholder="Cole aqui o conteúdo do QR Code..."
+                                rows={6}
+                                disabled={loading}
+                            />
+
+                            <span className="gate-field__hint">
+                                O código será verificado
+                                automaticamente antes da entrada.
+                            </span>
+                        </div>
+
+                        {message && (
+                            <div className="gate-result gate-result--success">
+                                <div className="gate-result__icon">
+                                    ✓
+                                </div>
+
+                                <div>
+                                    <span>
+                                        ACESSO AUTORIZADO
+                                    </span>
+
+                                    <strong>{message}</strong>
+                                </div>
+                            </div>
+                        )}
+
+                        {error && (
+                            <div className="gate-result gate-result--error">
+                                <div className="gate-result__icon">
+                                    !
+                                </div>
+
+                                <div>
+                                    <span>
+                                        ACESSO NÃO AUTORIZADO
+                                    </span>
+
+                                    <strong>{error}</strong>
+                                </div>
+                            </div>
+                        )}
+
+                        <button
+                            type="button"
+                            className="gate-validate-button"
+                            onClick={handleValidate}
+                            disabled={loading}
+                        >
+                            {loading ? (
+                                <>
+                                    <span className="gate-spinner" />
+                                    Validando ingresso...
+                                </>
+                            ) : (
+                                <>
+                                    Validar ingresso
+                                    <span>→</span>
+                                </>
+                            )}
+                        </button>
+                    </div>
+                </section>
+
+                <p className="gate-footer">
+                    Elite Events · Sistema de controle de acesso
+                </p>
+            </div>
+        </main>
+        </ProtectedRoute >
+    );
+}
+

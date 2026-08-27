@@ -91,6 +91,20 @@ export async function deleteEvent(
         throw new AppError(403, "You can only delete your own events");
     }
 
+
+    const reservations = await prisma.reservation.count({
+        where: {
+            eventId: id,
+        },
+    });
+
+    if (reservations > 0) {
+        throw new AppError(
+            409,
+            "Não é possível excluir um evento que já possui reservas.",
+        );
+    }
+
     return prisma.event.delete({
         where: { id },
     });

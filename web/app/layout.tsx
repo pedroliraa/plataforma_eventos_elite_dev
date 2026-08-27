@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./global.css";
+import Header from "@/components/Header";
 
 export const metadata: Metadata = {
   title: "Elite Events",
@@ -13,7 +14,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR">
-      <body>{children}</body>
+      <body>
+        <Header />
+        {children}
+      </body>
     </html>
   );
 }
