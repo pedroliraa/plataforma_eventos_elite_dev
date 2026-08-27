@@ -15,6 +15,13 @@ type Event = {
   externalId: string | null;
 };
 
+type Movie = {
+  id: number;
+  title: string;
+  release_date?: string;
+  poster_path?: string | null;
+};
+
 type EventForm = {
   title: string;
   type: "MOVIE" | "SHOW";
@@ -42,6 +49,10 @@ export default function OrganizerPage() {
   const [form, setForm] = useState<EventForm>(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
 
+  const [movies, setMovies] = useState<Movie[]>([]);
+  const [movieSearch, setMovieSearch] = useState("");
+  const [searchingMovies, setSearchingMovies] = useState(false);
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -50,7 +61,9 @@ export default function OrganizerPage() {
   async function loadEvents() {
     try {
       setLoading(true);
+
       const data = await apiFetch<Event[]>("/events");
+
       setEvents(data);
     } catch (error) {
       setError(
@@ -67,6 +80,38 @@ export default function OrganizerPage() {
     loadEvents();
   }, []);
 
+  useEffect(() => {
+    if (
+      form.type !== "MOVIE" ||
+      form.source !== "TMDB" ||
+      movieSearch.trim().length < 2
+    ) {
+      setMovies([]);
+      setSearchingMovies(false);
+      return;
+    }
+
+    const timeout = setTimeout(async () => {
+      try {
+        setSearchingMovies(true);
+
+        const data = await apiFetch<Movie[]>(
+          `/events/catalog/search?query=${encodeURIComponent(
+            movieSearch,
+          )}`,
+        );
+
+        setMovies(data);
+      } catch {
+        setMovies([]);
+      } finally {
+        setSearchingMovies(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timeout);
+  }, [movieSearch, form.type, form.source]);
+
   function handleChange(
     field: keyof EventForm,
     value: string,
@@ -74,6 +119,51 @@ export default function OrganizerPage() {
     setForm((current) => ({
       ...current,
       [field]: value,
+    }));
+  }
+
+  function handleTypeChange(value: EventForm["type"]) {
+    if (value === "SHOW") {
+      setMovieSearch("");
+      setMovies([]);
+
+      setForm((current) => ({
+        ...current,
+        type: value,
+        source: "MANUAL",
+        externalId: "",
+      }));
+
+      return;
+    }
+
+    setForm((current) => ({
+      ...current,
+      type: value,
+    }));
+  }
+
+  function handleSourceChange(value: EventForm["source"]) {
+    setMovieSearch("");
+    setMovies([]);
+
+    setForm((current) => ({
+      ...current,
+      source: value,
+      externalId:
+        value === "MANUAL" ? current.externalId : "",
+    }));
+  }
+
+  function handleMovieSelect(movie: Movie) {
+    setMovieSearch(movie.title);
+    setMovies([]);
+
+    setForm((current) => ({
+      ...current,
+      title: movie.title,
+      source: "TMDB",
+      externalId: String(movie.id),
     }));
   }
 
@@ -91,6 +181,9 @@ export default function OrganizerPage() {
       externalId: event.externalId ?? "",
     });
 
+    setMovieSearch(event.source === "TMDB" ? event.title : "");
+    setMovies([]);
+
     setMessage("");
     setError("");
   }
@@ -98,6 +191,8 @@ export default function OrganizerPage() {
   function handleCancelEdit() {
     setEditingId(null);
     setForm(emptyForm);
+    setMovieSearch("");
+    setMovies([]);
     setMessage("");
     setError("");
   }
@@ -141,7 +236,10 @@ export default function OrganizerPage() {
       }
 
       setForm(emptyForm);
+      setMovieSearch("");
+      setMovies([]);
       setEditingId(null);
+
       await loadEvents();
     } catch (error) {
       setError(
@@ -198,25 +296,13 @@ export default function OrganizerPage() {
 
         <form onSubmit={handleSubmit}>
           <div>
-            <label htmlFor="title">Título</label>
-            <input
-              id="title"
-              value={form.title}
-              onChange={(e) =>
-                handleChange("title", e.target.value)
-              }
-              required
-            />
-          </div>
-
-          <div>
             <label htmlFor="type">Tipo</label>
+
             <select
               id="type"
               value={form.type}
               onChange={(e) =>
-                handleChange(
-                  "type",
+                handleTypeChange(
                   e.target.value as EventForm["type"],
                 )
               }
@@ -227,7 +313,90 @@ export default function OrganizerPage() {
           </div>
 
           <div>
+            <label htmlFor="source">Fonte</label>
+
+            <select
+              id="source"
+              value={form.source}
+              onChange={(e) =>
+                handleSourceChange(
+                  e.target.value as EventForm["source"],
+                )
+              }
+            >
+              <option value="MANUAL">Manual</option>
+
+              {form.type === "MOVIE" && (
+                <option value="TMDB">TMDb</option>
+              )}
+            </select>
+          </div>
+
+          {form.type === "MOVIE" && form.source === "TMDB" ? (
+            <div>
+              <label htmlFor="movieSearch">
+                Buscar filme
+              </label>
+
+              <input
+                id="movieSearch"
+                value={movieSearch}
+                onChange={(e) =>
+                  setMovieSearch(e.target.value)
+                }
+                placeholder="Digite o nome do filme..."
+                autoComplete="off"
+              />
+
+              {searchingMovies && <p>Buscando filmes...</p>}
+
+              {!searchingMovies &&
+                movieSearch.trim().length >= 2 &&
+                movies.length === 0 && (
+                  <p>Nenhum filme encontrado.</p>
+                )}
+
+              {movies.length > 0 && (
+                <ul>
+                  {movies.map((movie) => (
+                    <li key={movie.id}>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleMovieSelect(movie)
+                        }
+                      >
+                        {movie.title}
+                        {movie.release_date
+                          ? ` (${movie.release_date.slice(
+                              0,
+                              4,
+                            )})`
+                          : ""}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ) : (
+            <div>
+              <label htmlFor="title">Título</label>
+
+              <input
+                id="title"
+                value={form.title}
+                onChange={(e) =>
+                  handleChange("title", e.target.value)
+                }
+                required
+              />
+            </div>
+          )}
+
+          <div>
             <label htmlFor="date">Data e hora</label>
+
             <input
               id="date"
               type="datetime-local"
@@ -241,6 +410,7 @@ export default function OrganizerPage() {
 
           <div>
             <label htmlFor="location">Local</label>
+
             <input
               id="location"
               value={form.location}
@@ -253,6 +423,7 @@ export default function OrganizerPage() {
 
           <div>
             <label htmlFor="capacity">Capacidade</label>
+
             <input
               id="capacity"
               type="number"
@@ -267,6 +438,7 @@ export default function OrganizerPage() {
 
           <div>
             <label htmlFor="price">Preço</label>
+
             <input
               id="price"
               type="number"
@@ -280,38 +452,41 @@ export default function OrganizerPage() {
             />
           </div>
 
-          <div>
-            <label htmlFor="source">Fonte</label>
-            <select
-              id="source"
-              value={form.source}
-              onChange={(e) =>
-                handleChange(
-                  "source",
-                  e.target.value as EventForm["source"],
-                )
-              }
-            >
-              <option value="MANUAL">Manual</option>
-              <option value="TMDB">TMDb</option>
-              <option value="TICKETMASTER">
-                Ticketmaster
-              </option>
-            </select>
-          </div>
+          {form.source === "TMDB" ? (
+            <div>
+              <label htmlFor="externalId">
+                ID externo
+              </label>
 
-          <div>
-            <label htmlFor="externalId">
-              ID externo (opcional)
-            </label>
-            <input
-              id="externalId"
-              value={form.externalId}
-              onChange={(e) =>
-                handleChange("externalId", e.target.value)
-              }
-            />
-          </div>
+              <input
+                id="externalId"
+                value={form.externalId}
+                readOnly
+                placeholder="Selecione um filme"
+              />
+
+              <small>
+                Preenchido automaticamente pelo TMDb.
+              </small>
+            </div>
+          ) : (
+            <div>
+              <label htmlFor="externalId">
+                ID externo (opcional)
+              </label>
+
+              <input
+                id="externalId"
+                value={form.externalId}
+                onChange={(e) =>
+                  handleChange(
+                    "externalId",
+                    e.target.value,
+                  )
+                }
+              />
+            </div>
+          )}
 
           <button type="submit" disabled={saving}>
             {saving
