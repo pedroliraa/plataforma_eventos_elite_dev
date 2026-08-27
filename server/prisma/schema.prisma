@@ -1,0 +1,115 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ORGANIZER
+  CUSTOMER
+  GATE
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  events       Event[]
+  reservations Reservation[]
+}
+
+enum EventType {
+  MOVIE
+  SHOW
+}
+
+enum EventSource {
+  MANUAL
+  TMDB
+  TICKETMASTER
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  CANCELLED
+}
+
+model Event {
+  id          String      @id @default(uuid())
+  title       String
+  type        EventType
+  date        DateTime
+  location    String
+  capacity    Int
+  price       Decimal
+  status      EventStatus @default(DRAFT)
+  source      EventSource @default(MANUAL)
+  externalId  String?
+  createdAt   DateTime    @default(now())
+  publishedAt DateTime?
+  updatedAt   DateTime    @updatedAt
+
+  organizerId String
+  organizer   User   @relation(fields: [organizerId], references: [id])
+
+  reservations Reservation[]
+
+  @@index([organizerId])
+  @@index([status])
+}
+
+enum ReservationStatus {
+  PENDING
+  PAID
+  CANCELLED
+  FAILED
+}
+
+model Reservation {
+  id        String            @id @default(uuid())
+  quantity  Int
+  status    ReservationStatus @default(PENDING)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  eventId    String
+  customerId String
+
+  event    Event @relation(fields: [eventId], references: [id])
+  customer User  @relation(fields: [customerId], references: [id])
+
+  tickets Ticket[]
+
+  @@index([eventId])
+  @@index([customerId])
+}
+
+enum TicketStatus {
+  VALID
+  USED
+  CANCELLED
+}
+
+model Ticket {
+  id         String       @id @default(uuid())
+  qrCode     String       @unique
+  shareToken String       @unique @default(uuid())
+  status     TicketStatus @default(VALID)
+  usedAt     DateTime?
+  createdAt  DateTime     @default(now())
+
+  reservationId String
+
+  reservation Reservation @relation(fields: [reservationId], references: [id])
+
+  @@index([reservationId])
+}
