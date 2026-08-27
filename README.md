@@ -99,12 +99,10 @@ O projeto prioriza um fluxo simples e completo de ponta a ponta, com separação
 ### Infraestrutura
 
 * Docker / Docker Compose
-* Vercel
-* Render
 
 ### Integrações
 
-* Ticketmaster Discovery API
+* TMDb API
 * QR Code
 
 ---
@@ -154,14 +152,14 @@ Antes de iniciar, tenha instalado:
 * Docker
 * Git
 
-Também é necessário possuir uma chave da API do Ticketmaster.
+Também é necessário possuir uma chave da API do TMDb.
 
 ---
 
 ## 1. Clonar o projeto
 
 ```bash
-git clone <URL_DO_REPOSITORIO>
+git clone https://github.com/pedroliraa/plataforma_eventos_elite_dev
 cd plataforma_eventos_elite_dev
 ```
 
@@ -204,7 +202,7 @@ Crie um arquivo `.env`:
 ```env
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/elite_events"
 JWT_SECRET="sua-chave-secreta"
-TICKETMASTER_API_KEY="sua-chave-do-ticketmaster"
+TMDB_API_KEY="sua-chave-do-tmdb"
 PORT=3001
 ```
 
@@ -358,14 +356,14 @@ Não existe nenhuma transação financeira real.
 
 # API externa
 
-O projeto utiliza a **Ticketmaster Discovery API** como fonte externa de dados para o catálogo de eventos.
+O projeto utiliza a **TMDb API** como fonte externa de dados para o catálogo de eventos.
 
 Os dados retornados pela API são utilizados como base para que o organizador possa selecionar o conteúdo do evento que será publicado na plataforma.
 
 A chave da API deve ser configurada através da variável:
 
 ```env
-TICKETMASTER_API_KEY=...
+TMDB_API_KEY=...
 ```
 
 ---
@@ -394,12 +392,12 @@ Perfis esperados:
 
 ### Usuários
 
-| Perfil      | E-mail                  | Senha      |
-| ----------- | ----------------------- | ---------- |
-| Organizador | `organizer@example.com` | `senha123` |
-| Cliente 1   | `customer1@example.com` | `senha123` |
-| Cliente 2   | `customer2@example.com` | `senha123` |
-| Portaria    | `gate@example.com`      | `senha123` |
+| Perfil      | E-mail                      | Senha     |
+| ----------- | --------------------------- | --------- |
+| Organizador | `organizer@eliteevents.com` | `123456`  |
+| Cliente 1   | `cliente1@eliteevents.com`  | `123456`  |
+| Cliente 2   | `cliente2@eliteevents.com`  | `123456`  |
+| Portaria    | `gate@eliteevents.com`      | `123456`  |
 
 > Os usuários acima devem corresponder aos dados efetivamente semeados no banco. Caso as credenciais do seed sejam diferentes, utilize as credenciais definidas no arquivo de seed.
 
@@ -477,7 +475,7 @@ O projeto foi desenvolvido de forma iterativa, com implementação, execução, 
 
 ---
 
-# 📦 Docker
+# Docker
 
 O projeto possui configuração Docker para facilitar a execução do ambiente de banco de dados local.
 
@@ -497,32 +495,6 @@ docker compose down
 
 ---
 
-# Deploy
-
-O projeto pode ser executado em produção separando Front-End e Back-End.
-
-### Front-End
-
-Deploy realizado utilizando:
-
-**Vercel**
-
-A variável de ambiente utilizada em produção é:
-
-```env
-NEXT_PUBLIC_API_URL=https://SUA-API.onrender.com
-```
-
-### Back-End
-
-Deploy realizado utilizando:
-
-**Render**
-
-As variáveis de ambiente devem ser configuradas diretamente no ambiente de produção.
-
----
-
 # Considerações finais
 
 O objetivo principal da implementação foi entregar o fluxo completo da plataforma funcionando de ponta a ponta, priorizando uma solução simples, organizada e fácil de avaliar.
@@ -538,5 +510,5 @@ Projeto desenvolvido como parte do desafio técnico **Elite Dev**.
 Repositório:
 
 ```text
-<URL_DO_REPOSITORIO>
+https://github.com/pedroliraa/plataforma_eventos_elite_dev
 ```
