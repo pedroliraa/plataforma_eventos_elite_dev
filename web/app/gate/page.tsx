@@ -1,12 +1,13 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { apiFetch } from "@/lib/api";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import {
     removeToken,
 } from "@/lib/auth";
+import { Html5Qrcode } from "html5-qrcode";
 
 type Event = {
     id: string;
@@ -61,6 +62,10 @@ export default function GatePage() {
 
     const [loading, setLoading] = useState(false);
     const [loadingEvents, setLoadingEvents] = useState(true);
+
+    const scannerRef = useRef<Html5Qrcode | null>(null);
+    const [scanning, setScanning] = useState(false);
+    const [cameraError, setCameraError] = useState("");
 
     function handleLogout() {
         removeToken();
@@ -129,6 +134,106 @@ export default function GatePage() {
         }
     }
 
+    function startScanner() {
+        setCameraError("");
+        setScanning(true);
+    }
+
+    useEffect(() => {
+        if (!scanning) {
+            return;
+        }
+
+        let scanner: Html5Qrcode | null = null;
+        let stopped = false;
+
+        async function initializeScanner() {
+            try {
+                scanner = new Html5Qrcode("qr-reader");
+
+                scannerRef.current = scanner;
+
+                await scanner.start(
+                    { facingMode: "environment" },
+                    {
+                        fps: 10,
+                        qrbox: { width: 250, height: 250 },
+                    },
+                    (decodedText) => {
+                        if (stopped) {
+                            return;
+                        }
+
+                        stopped = true;
+
+                        setQrCode(decodedText);
+                        setMessage("");
+                        setError("");
+                        setScanning(false);
+                    },
+                    () => {
+                        // Erros de leitura são ignorados enquanto procura o QR.
+                    },
+                );
+            } catch (error) {
+                if (stopped) {
+                    return;
+                }
+
+                console.error("Erro ao abrir câmera:", error);
+
+                setScanning(false);
+                scannerRef.current = null;
+
+                setCameraError(
+                    error instanceof Error
+                        ? error.message
+                        : "Não foi possível acessar a câmera.",
+                );
+            }
+        }
+
+        initializeScanner();
+
+        return () => {
+            stopped = true;
+
+            if (scanner) {
+                scanner.stop().catch(() => { });
+            }
+
+            scannerRef.current = null;
+        };
+    }, [scanning]);
+
+    async function stopScanner() {
+        const scanner = scannerRef.current;
+
+        setScanning(false);
+
+        if (!scanner) {
+            return;
+        }
+
+        try {
+            await scanner.stop();
+            scanner.clear();
+        } catch {
+            // O scanner pode já ter sido encerrado.
+        }
+
+        scannerRef.current = null;
+    }
+    useEffect(() => {
+        return () => {
+            const scanner = scannerRef.current;
+
+            if (scanner) {
+                scanner.stop().catch(() => { });
+            }
+        };
+    }, []);
+
     const selectedEvent = events.find(
         (event) => event.id === eventId,
     );
@@ -154,175 +259,213 @@ export default function GatePage() {
                             </p>
                         </div>
 
-                        <button
-                            type="button"
-                            className="gate-logout"
-                            onClick={handleLogout}
-                        >
-                            Sair
-                        </button>
-                    
-                    <div className="gate-status">
-                        <span className="gate-status__dot" />
-                        PORTARIA ATIVA
-                    </div>
-                </section>
+                        
 
-                <section className="gate-panel">
-                    <div className="gate-panel__header">
-                        <div>
-                            <span>CONTROLE DE ACESSO</span>
-                            <h2>Validar ingresso</h2>
+                        <div className="gate-status">
+                            <span className="gate-status__dot" />
+                            PORTARIA ATIVA
+                        </div>
+                    </section>
+
+                    <section className="gate-panel">
+                        <div className="gate-panel__header">
+                            <div>
+                                <span>CONTROLE DE ACESSO</span>
+                                <h2>Validar ingresso</h2>
+                            </div>
+
+                            <div className="gate-panel__number">
+                                01
+                            </div>
                         </div>
 
-                        <div className="gate-panel__number">
-                            01
-                        </div>
-                    </div>
+                        <div className="gate-form">
+                            <div className="gate-field">
+                                <label htmlFor="event">
+                                    Evento
+                                </label>
 
-                    <div className="gate-form">
-                        <div className="gate-field">
-                            <label htmlFor="event">
-                                Evento
-                            </label>
-
-                            <select
-                                id="event"
-                                value={eventId}
-                                onChange={(e) => {
-                                    setEventId(e.target.value);
-                                    setMessage("");
-                                    setError("");
-                                }}
-                                disabled={loadingEvents}
-                            >
-                                <option value="">
-                                    {loadingEvents
-                                        ? "Carregando eventos..."
-                                        : "Selecione um evento"}
-                                </option>
-
-                                {events.map((event) => (
-                                    <option
-                                        key={event.id}
-                                        value={event.id}
-                                    >
-                                        {event.title}
+                                <select
+                                    id="event"
+                                    value={eventId}
+                                    onChange={(e) => {
+                                        setEventId(e.target.value);
+                                        setMessage("");
+                                        setError("");
+                                    }}
+                                    disabled={loadingEvents}
+                                >
+                                    <option value="">
+                                        {loadingEvents
+                                            ? "Carregando eventos..."
+                                            : "Selecione um evento"}
                                     </option>
-                                ))}
-                            </select>
 
-                            {selectedEvent && (
-                                <div className="gate-event-preview">
-                                    <strong>
-                                        {selectedEvent.title}
-                                    </strong>
+                                    {events.map((event) => (
+                                        <option
+                                            key={event.id}
+                                            value={event.id}
+                                        >
+                                            {event.title}
+                                        </option>
+                                    ))}
+                                </select>
 
-                                    <span>
-                                        {formatDate(
-                                            selectedEvent.date,
-                                        )}
-                                        {" · "}
-                                        {new Date(
-                                            selectedEvent.date,
-                                        ).toLocaleTimeString(
-                                            "pt-BR",
-                                            {
-                                                hour: "2-digit",
-                                                minute: "2-digit",
-                                            },
-                                        )}
-                                    </span>
+                                {selectedEvent && (
+                                    <div className="gate-event-preview">
+                                        <strong>
+                                            {selectedEvent.title}
+                                        </strong>
 
-                                    <span>
-                                        {selectedEvent.location}
-                                    </span>
+                                        <span>
+                                            {formatDate(
+                                                selectedEvent.date,
+                                            )}
+                                            {" · "}
+                                            {new Date(
+                                                selectedEvent.date,
+                                            ).toLocaleTimeString(
+                                                "pt-BR",
+                                                {
+                                                    hour: "2-digit",
+                                                    minute: "2-digit",
+                                                },
+                                            )}
+                                        </span>
+
+                                        <span>
+                                            {selectedEvent.location}
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="gate-scanner">
+                                <div className="gate-scanner__header">
+                                    <div>
+                                        <span>LEITURA AUTOMÁTICA</span>
+                                        <strong>Escanear QR Code</strong>
+                                    </div>
+
+                                    {!scanning ? (
+                                        <button
+                                            type="button"
+                                            onClick={startScanner}
+                                            disabled={loading}
+                                        >
+                                            Abrir câmera
+                                        </button>
+                                    ) : (
+                                        <button
+                                            type="button"
+                                            onClick={stopScanner}
+                                        >
+                                            Fechar câmera
+                                        </button>
+                                    )}
+                                </div>
+
+                                {scanning && (
+                                    <div
+                                        id="qr-reader"
+                                        className="gate-scanner__reader"
+                                    />
+                                )}
+
+                                {!scanning && (
+                                    <p className="gate-scanner__hint">
+                                        Aponte a câmera para o QR Code do ingresso.
+                                    </p>
+                                )}
+
+                                {cameraError && (
+                                    <p className="gate-scanner__error">
+                                        {cameraError}
+                                    </p>
+                                )}
+                            </div>
+
+                            <div className="gate-field">
+                                <label htmlFor="qrCode">
+                                    Ou informe o QR Code manualmente
+                                </label>
+
+                                <textarea
+                                    id="qrCode"
+                                    value={qrCode}
+                                    onChange={(e) => {
+                                        setQrCode(e.target.value);
+                                        setMessage("");
+                                        setError("");
+                                    }}
+                                    placeholder="Cole aqui o conteúdo do QR Code..."
+                                    rows={6}
+                                    disabled={loading}
+                                />
+
+                                <span className="gate-field__hint">
+                                    Use a entrada manual caso a câmera não esteja disponível.
+                                </span>
+                            </div>
+
+                            {message && (
+                                <div className="gate-result gate-result--success">
+                                    <div className="gate-result__icon">
+                                        ✓
+                                    </div>
+
+                                    <div>
+                                        <span>
+                                            ACESSO AUTORIZADO
+                                        </span>
+
+                                        <strong>{message}</strong>
+                                    </div>
                                 </div>
                             )}
-                        </div>
 
-                        <div className="gate-field">
-                            <label htmlFor="qrCode">
-                                Conteúdo do QR Code
-                            </label>
+                            {error && (
+                                <div className="gate-result gate-result--error">
+                                    <div className="gate-result__icon">
+                                        !
+                                    </div>
 
-                            <textarea
-                                id="qrCode"
-                                value={qrCode}
-                                onChange={(e) => {
-                                    setQrCode(e.target.value);
-                                    setMessage("");
-                                    setError("");
-                                }}
-                                placeholder="Cole aqui o conteúdo do QR Code..."
-                                rows={6}
+                                    <div>
+                                        <span>
+                                            ACESSO NÃO AUTORIZADO
+                                        </span>
+
+                                        <strong>{error}</strong>
+                                    </div>
+                                </div>
+                            )}
+
+                            <button
+                                type="button"
+                                className="gate-validate-button"
+                                onClick={handleValidate}
                                 disabled={loading}
-                            />
-
-                            <span className="gate-field__hint">
-                                O código será verificado
-                                automaticamente antes da entrada.
-                            </span>
+                            >
+                                {loading ? (
+                                    <>
+                                        <span className="gate-spinner" />
+                                        Validando ingresso...
+                                    </>
+                                ) : (
+                                    <>
+                                        Validar ingresso
+                                        <span>→</span>
+                                    </>
+                                )}
+                            </button>
                         </div>
+                    </section>
 
-                        {message && (
-                            <div className="gate-result gate-result--success">
-                                <div className="gate-result__icon">
-                                    ✓
-                                </div>
-
-                                <div>
-                                    <span>
-                                        ACESSO AUTORIZADO
-                                    </span>
-
-                                    <strong>{message}</strong>
-                                </div>
-                            </div>
-                        )}
-
-                        {error && (
-                            <div className="gate-result gate-result--error">
-                                <div className="gate-result__icon">
-                                    !
-                                </div>
-
-                                <div>
-                                    <span>
-                                        ACESSO NÃO AUTORIZADO
-                                    </span>
-
-                                    <strong>{error}</strong>
-                                </div>
-                            </div>
-                        )}
-
-                        <button
-                            type="button"
-                            className="gate-validate-button"
-                            onClick={handleValidate}
-                            disabled={loading}
-                        >
-                            {loading ? (
-                                <>
-                                    <span className="gate-spinner" />
-                                    Validando ingresso...
-                                </>
-                            ) : (
-                                <>
-                                    Validar ingresso
-                                    <span>→</span>
-                                </>
-                            )}
-                        </button>
-                    </div>
-                </section>
-
-                <p className="gate-footer">
-                    Elite Events · Sistema de controle de acesso
-                </p>
-            </div>
-        </main>
+                    <p className="gate-footer">
+                        Elite Events · Sistema de controle de acesso
+                    </p>
+                </div>
+            </main>
         </ProtectedRoute >
     );
 }
