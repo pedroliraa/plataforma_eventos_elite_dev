@@ -37,15 +37,15 @@ export default function LoginPage() {
 
       switch (data.user.role) {
         case "CUSTOMER":
-          router.push("/eventos");
+          router.push("/events");
           break;
 
         case "ORGANIZER":
-          router.push("/organizador");
+          router.push("/organizer");
           break;
 
         case "GATE":
-          router.push("/portaria");
+          router.push("/gate");
           break;
       }
     } catch (error) {
