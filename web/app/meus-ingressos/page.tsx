@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { QRCodeSVG } from "qrcode.react";
+import ProtectedRoute from "@/components/ProtectedRoute";
 
 type Ticket = {
     id: string;
@@ -64,6 +65,7 @@ export default function MeusIngressosPage() {
     );
 
     return (
+        <ProtectedRoute allowedRoles={["CUSTOMER"]}>
         <main>
             <h1>Meus ingressos</h1>
 
@@ -100,5 +102,6 @@ export default function MeusIngressosPage() {
                 </section>
             )}
         </main>
+        </ProtectedRoute>
     );
 }

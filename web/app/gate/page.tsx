@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
+import ProtectedRoute from "@/components/ProtectedRoute";
 
 type Event = {
   id: string;
@@ -107,6 +108,7 @@ export default function GatePage() {
   }
 
   return (
+     <ProtectedRoute allowedRoles={["GATE"]}>
     <main>
       <h1>Validação de ingressos</h1>
 
@@ -152,5 +154,6 @@ export default function GatePage() {
 
       {error && <p>{error}</p>}
     </main>
+    </ProtectedRoute>
   );
 }

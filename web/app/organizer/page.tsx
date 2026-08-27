@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import ProtectedRoute from "@/components/ProtectedRoute";
 import { apiFetch } from "@/lib/api";
 
 type Event = {
@@ -286,6 +287,7 @@ export default function OrganizerPage() {
   }
 
   return (
+    <ProtectedRoute allowedRoles={["ORGANIZER"]}>
     <main>
       <h1>Área do Organizer</h1>
 
@@ -558,5 +560,6 @@ export default function OrganizerPage() {
         )}
       </section>
     </main>
+    </ProtectedRoute>
   );
 }
